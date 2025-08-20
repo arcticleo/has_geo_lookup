@@ -1,0 +1,40 @@
+class CreateGeonames < ActiveRecord::Migration<%= migration_version %>
+  def change
+    return if table_exists?(:geonames)
+    
+    create_table :geonames do |t|
+      t.string :name, limit: 200
+      t.string :asciiname, limit: 200
+      t.decimal :latitude, precision: 10, scale: 5
+      t.decimal :longitude, precision: 10, scale: 5
+      t.string :feature_class, limit: 1
+      t.string :feature_code, limit: 10
+      t.string :country_code, limit: 2
+      t.string :cc2, limit: 60
+      t.string :admin1_code, limit: 20
+      t.string :admin2_code, limit: 20
+      t.string :admin3_code, limit: 20
+      t.string :admin4_code, limit: 20
+      t.integer :population, limit: 8
+      t.integer :elevation
+      t.integer :dem
+      t.string :timezone, limit: 40
+      t.datetime :modification_date
+
+      t.timestamps
+    end
+    
+    # All indexes consolidated from incremental migrations
+    add_index :geonames, :asciiname
+    add_index :geonames, :country_code
+    add_index :geonames, :population
+    add_index :geonames, [:country_code, :admin1_code]
+    add_index :geonames, [:country_code, :admin1_code, :admin2_code]
+    add_index :geonames, [:feature_class, :feature_code]
+    add_index :geonames, [:feature_class, :feature_code, :latitude, :longitude]
+    add_index :geonames, [:latitude, :longitude]
+    add_index :geonames, :feature_code
+    add_index :geonames, :name
+    add_index :geonames, [:admin1_code, :admin2_code]
+  end
+end

@@ -1,0 +1,10 @@
+class CreateGeonamesMetros < ActiveRecord::Migration<%= migration_version %>
+  def change
+    return if table_exists?(:geonames_metros)
+    
+    create_join_table :geonames, :metros do |t|
+      t.index [:geoname_id, :metro_id]
+      t.index [:metro_id, :geoname_id], unique: true
+    end
+  end
+end

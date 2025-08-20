@@ -1,0 +1,17 @@
+class CreateMetros < ActiveRecord::Migration<%= migration_version %>
+  def change
+    return if table_exists?(:metros)
+    
+    create_table :metros do |t|
+      t.string :name
+      t.text :details
+      t.string :country_code, limit: 2
+      t.integer :population
+
+      t.timestamps
+    end
+
+    add_index :metros, :name, unique: true
+    add_index :metros, :country_code
+  end
+end

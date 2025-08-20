@@ -1,0 +1,10 @@
+class CreateGeoboundariesMetros < ActiveRecord::Migration<%= migration_version %>
+  def change
+    return if table_exists?(:geoboundaries_metros)
+    
+    create_join_table :geoboundaries, :metros do |t|
+      t.index [:geoboundary_id, :metro_id]
+      t.index [:metro_id, :geoboundary_id], unique: true
+    end
+  end
+end

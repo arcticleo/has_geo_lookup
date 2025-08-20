@@ -1,0 +1,17 @@
+class CreateFeatureCodes < ActiveRecord::Migration<%= migration_version %>
+  def change
+    return if table_exists?(:feature_codes)
+  
+    create_table :feature_codes do |t|
+      t.string :feature_class, limit: 1
+      t.string :feature_code, limit: 10
+      t.string :name
+      t.text :description
+
+      t.timestamps
+    end
+
+    add_index :feature_codes, [:feature_class, :feature_code], unique: true
+    add_index :feature_codes, :feature_class
+  end
+end

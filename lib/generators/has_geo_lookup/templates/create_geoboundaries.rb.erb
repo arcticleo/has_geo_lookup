@@ -1,0 +1,24 @@
+class CreateGeoboundaries < ActiveRecord::Migration<%= migration_version %>
+  def change
+    return if table_exists?(:geoboundaries)
+
+    create_table :geoboundaries do |t|
+      t.string :name
+      t.string :level
+      t.string :shape_group
+      t.string :shape_iso
+      t.string :shape_id
+      t.string :source_url
+      t.column :boundary, 'geometry NOT NULL SRID 4326'
+
+      t.timestamps
+    end
+
+    add_index :geoboundaries, :boundary, type: :spatial
+    add_index :geoboundaries, :level
+    add_index :geoboundaries, :shape_id, unique: true
+    add_index :geoboundaries, :name
+    add_index :geoboundaries, :shape_iso
+    add_index :geoboundaries, :shape_group
+  end
+end
