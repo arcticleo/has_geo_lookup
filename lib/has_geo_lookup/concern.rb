@@ -224,8 +224,14 @@ module HasGeoLookup
       point_wkt
     )
     
+    
     query = query.where(level: levels) if levels
-    query.order(:level)
+    
+    # Add limit to prevent memory issues on large datasets
+    query.order(:level).limit(50)
+  rescue => e
+    Rails.logger&.error "Spatial query failed for coordinates #{lat}, #{lng}: #{e.message}"
+    []
   end
 
   # Returns the boundary at a specific level that contains this point
