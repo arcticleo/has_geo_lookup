@@ -13,12 +13,13 @@
 # - ADM2: County/district boundaries (e.g., Los Angeles County)
 # - ADM3: Municipality boundaries (e.g., city limits)
 # - ADM4: Neighborhood/ward boundaries
+# - ADM5: Sub-neighborhood boundaries (city blocks, micro-districts)
 #
 # The boundary geometries are stored using PostGIS and can be used for precise
 # point-in-polygon queries to determine administrative containment.
 #
 # @attr [String] name Official boundary name
-# @attr [String] level Administrative level (ADM0, ADM1, ADM2, ADM3, ADM4)
+# @attr [String] level Administrative level (ADM0, ADM1, ADM2, ADM3, ADM4, ADM5)
 # @attr [String] shape_iso ISO3 country code for this boundary
 # @attr [String] shape_group Grouping identifier for related boundaries
 # @attr [RGeo::Geos::CAPIGeometryMethods] boundary PostGIS geometry (polygon/multipolygon)
@@ -36,7 +37,7 @@ class Geoboundary < ActiveRecord::Base
 
   # Validations
   validates :name, presence: true
-  validates :level, presence: true, inclusion: { in: %w[ADM0 ADM1 ADM2 ADM3 ADM4] }
+  validates :level, presence: true, inclusion: { in: %w[ADM0 ADM1 ADM2 ADM3 ADM4 ADM5] }
   validates :boundary, presence: true
 
   # Scopes for different administrative levels
@@ -45,6 +46,7 @@ class Geoboundary < ActiveRecord::Base
   scope :counties_districts, -> { where(level: "ADM2") }
   scope :municipalities, -> { where(level: "ADM3") }
   scope :neighborhoods, -> { where(level: "ADM4") }
+  scope :sub_neighborhoods, -> { where(level: "ADM5") }
 
   scope :by_country, ->(country_code) {
     iso3 = country_code_to_iso3(country_code)
@@ -146,6 +148,7 @@ class Geoboundary < ActiveRecord::Base
     when "ADM2" then "County/District"
     when "ADM3" then "Municipality"
     when "ADM4" then "Neighborhood/Ward"
+    when "ADM5" then "Sub-Neighborhood/Block"
     else level
     end
     
@@ -183,6 +186,12 @@ class Geoboundary < ActiveRecord::Base
   # @return [Boolean] true if level is "ADM4"
   def neighborhood?
     level == "ADM4"
+  end
+
+  # Check if this is a sub-neighborhood-level boundary
+  # @return [Boolean] true if level is "ADM5"
+  def sub_neighborhood?
+    level == "ADM5"
   end
 
   private

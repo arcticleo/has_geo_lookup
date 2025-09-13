@@ -269,25 +269,25 @@ This gem integrates data from:
 
 ## Performance Considerations
 
-### Database Setup and Optimization
+### Index Analysis and Optimization
 
-The gem includes built-in tools to analyze and set up the complete database requirements for HasGeoLookup functionality:
+The gem includes built-in tools to analyze and optimize database indexes for HasGeoLookup functionality:
 
 ```bash
-# Check HasGeoLookup setup for all models (columns and indexes)
-rake has_geo_lookup:check_setup
+# Check index coverage for all models using HasGeoLookup
+rake has_geo_lookup:check_indexes
 
-# Preview what setup changes would be made (dry run)
-rake has_geo_lookup:preview_setup
+# Preview what indexes would be created (dry run)
+rake has_geo_lookup:preview_indexes
 
-# Generate Rails migration for complete HasGeoLookup setup
-rake has_geo_lookup:create_setup
+# Generate Rails migration for missing columns and indexes  
+rake has_geo_lookup:create_indexes
 
 # Analyze a specific model in detail
 rake has_geo_lookup:analyze_model[Listing]
 ```
 
-**Programmatic Setup Management:**
+**Programmatic Index Management:**
 
 ```ruby
 # Get performance analysis for all models
@@ -307,9 +307,9 @@ migration_path = HasGeoLookup::IndexChecker.generate_index_migration(Listing)
 puts HasGeoLookup::IndexChecker.performance_report
 ```
 
-**Complete Database Setup:**
+**Setup and Index Creation:**
 
-The `create_setup` task generates proper Rails migration files that can be committed to version control and run as part of your deployment process. The migration includes:
+The `create_indexes` task generates proper Rails migration files that can be committed to version control and run as part of your deployment process. The migration includes:
 
 - **Required columns**: Adds `latitude` and `longitude` decimal columns if missing
 - **Recommended indexes**: Creates optimized database indexes for geographic queries

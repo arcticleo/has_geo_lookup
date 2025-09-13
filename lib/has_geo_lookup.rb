@@ -15,6 +15,7 @@ require_relative "has_geo_lookup/models/metro"
 
 # Require utilities
 require_relative "has_geo_lookup/index_checker"
+require_relative "has_geo_lookup/boundary_importer"
 
 # Require generators and railtie if Rails is available
 if defined?(Rails)

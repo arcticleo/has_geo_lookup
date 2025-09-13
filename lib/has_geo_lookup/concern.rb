@@ -154,7 +154,7 @@ module HasGeoLookup
   end
 
   # Looks up the closest township-level area using feature_code = ADM3.
-  # Falls back to ADM4 if no ADM3 match is found.
+  # Falls back to ADM4, then ADM5 if no ADM3 match is found.
   #
   # Options:
   #   :radius_km — limit search radius (default: 25)
@@ -162,7 +162,7 @@ module HasGeoLookup
   #
   # Returns a Result struct with distance and matched geoname.
   def closest_township(radius_km: 25, country_code: nil)
-    %w[ADM3 ADM4].each do |code|
+    %w[ADM3 ADM4 ADM5].each do |code|
       result = nearest_geonames(
         feature_class: "A",
         feature_code: code,
@@ -254,10 +254,10 @@ module HasGeoLookup
   end
 
   # GeoBoundary equivalent of closest_township  
-  # Returns ADM3 or ADM4 boundary that contains this point, with fallback
+  # Returns ADM3, ADM4 or ADM5 boundary that contains this point, with fallback
   def township_boundary
-    # Try ADM3 first, then ADM4
-    %w[ADM3 ADM4].each do |level|
+    # Try ADM3 first, then ADM4, then ADM5
+    %w[ADM5 ADM4 ADM3].each do |level|
       boundary = containing_boundary(level)
       return GeoboundaryResult.new(boundary, 0.0, level, boundary.name) if boundary
     end
@@ -286,7 +286,7 @@ module HasGeoLookup
     return geoname_result unless geoname_result
     
     # Add boundary context to help validate the subdivision
-    boundaries = containing_boundaries(levels: %w[ADM2 ADM3 ADM4])
+    boundaries = containing_boundaries(levels: %w[ADM2 ADM3 ADM4 ADM5])
     geoname_result.record.define_singleton_method(:containing_boundaries) { boundaries }
     
     geoname_result
@@ -770,8 +770,9 @@ module HasGeoLookup
     # Check if boundary data exists for a country
     # 
     # @param iso2 [String] 2-letter country code
+    # @param level [String, nil] Optional specific ADM level to check (e.g., "ADM2")
     # @return [Boolean] true if boundary data exists
-    def has_boundary_data?(iso2)
+    def has_boundary_data?(iso2, level = nil)
       # Special cases for territories that don't have separate boundary data
       territories_without_boundaries = %w[PR VI GU AS MP TC] # US territories + others
       return true if territories_without_boundaries.include?(iso2)
@@ -782,9 +783,54 @@ module HasGeoLookup
       
       iso3 = country.code3
       
-      # Check if we have any boundaries for this country's ISO3 code
-      # Boundaries are stored with country info in shape_group or can be inferred from shape_iso
-      Geoboundary.where("shape_iso LIKE ? OR shape_group LIKE ?", "%#{iso3}%", "%#{iso3}%").exists?
+      # Build query for boundaries with optional level filter
+      query = Geoboundary.where("shape_iso LIKE ? OR shape_group LIKE ?", "%#{iso3}%", "%#{iso3}%")
+      query = query.where(level: level) if level
+      
+      query.exists?
+    end
+    
+    # Get detailed boundary coverage by ADM level for a country
+    #
+    # @param iso2 [String] 2-letter country code
+    # @return [Hash] Hash with ADM levels as keys and counts as values
+    # @example
+    #   boundary_coverage_by_level('US')
+    #   # => { 'ADM1' => 51, 'ADM2' => 3142, 'ADM3' => 0, 'ADM4' => 0, 'ADM5' => 0 }
+    def boundary_coverage_by_level(iso2)
+      # Special cases for territories
+      territories_without_boundaries = %w[PR VI GU AS MP TC]
+      if territories_without_boundaries.include?(iso2)
+        return %w[ADM1 ADM2 ADM3 ADM4 ADM5].index_with { |_| 1 } # Assume coverage
+      end
+      
+      # Convert ISO2 to ISO3
+      country = Iso3166.for_code(iso2)
+      return {} unless country
+      
+      iso3 = country.code3
+      
+      # Count boundaries by level for this country
+      boundaries_by_level = Geoboundary.where("shape_iso LIKE ? OR shape_group LIKE ?", "%#{iso3}%", "%#{iso3}%")
+                                      .group(:level)
+                                      .count
+      
+      # Ensure all ADM levels are represented (with 0 counts for missing)
+      %w[ADM1 ADM2 ADM3 ADM4 ADM5].index_with do |level|
+        boundaries_by_level[level] || 0
+      end
+    end
+    
+    # Get list of missing ADM levels for a country
+    #
+    # @param iso2 [String] 2-letter country code
+    # @return [Array<String>] Array of missing ADM level strings
+    # @example
+    #   missing_adm_levels('US')
+    #   # => ['ADM3', 'ADM4', 'ADM5']
+    def missing_adm_levels(iso2)
+      coverage = boundary_coverage_by_level(iso2)
+      coverage.select { |_level, count| count == 0 }.keys
     end
     
     # Check if geonames data exists for a country
@@ -803,15 +849,28 @@ module HasGeoLookup
     # Get comprehensive coverage status for a country
     #
     # @param iso2 [String] 2-letter country code
-    # @return [Hash] Coverage status with :boundaries, :geonames, :complete keys
+    # @return [Hash] Coverage status with detailed boundary information
+    # @example
+    #   coverage_status('US')
+    #   # => {
+    #   #   boundaries: true,
+    #   #   geonames: true,
+    #   #   complete: false,
+    #   #   boundary_coverage: { 'ADM1' => 51, 'ADM2' => 3142, 'ADM3' => 0, 'ADM4' => 0, 'ADM5' => 0 },
+    #   #   missing_adm_levels: ['ADM3', 'ADM4', 'ADM5']
+    #   # }
     def coverage_status(iso2)
       boundaries = has_boundary_data?(iso2)
       geonames = has_geonames_data?(iso2)
+      boundary_coverage = boundary_coverage_by_level(iso2)
+      missing_levels = missing_adm_levels(iso2)
       
       {
         boundaries: boundaries,
         geonames: geonames, 
-        complete: boundaries && geonames
+        complete: boundaries && geonames && missing_levels.empty?,
+        boundary_coverage: boundary_coverage,
+        missing_adm_levels: missing_levels
       }
     end
     
