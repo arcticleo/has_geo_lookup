@@ -45,13 +45,13 @@ class Metro < ActiveRecord::Base
   scope :containing_point, ->(latitude, longitude) {
     joins(:geoboundaries)
     .where("ST_Contains(geoboundaries.boundary, ST_GeomFromText(?, 4326))", 
-           "POINT(#{longitude} #{latitude})")
+           "POINT(#{latitude} #{longitude})")
     .distinct
   }
 
   # Check if this metro contains the given coordinates
   #
-  # Uses PostGIS spatial queries against all associated geoboundaries to determine
+  # Uses MySQL spatial queries against all associated geoboundaries to determine
   # if the point falls within any boundary that defines this metropolitan area.
   #
   # @param latitude [Float] Latitude in decimal degrees
@@ -68,7 +68,7 @@ class Metro < ActiveRecord::Base
     # Check if point is contained within any of the metro's boundaries
     geoboundaries.joins("INNER JOIN geoboundaries gb ON gb.id = geoboundaries.id")
                  .where("ST_Contains(gb.boundary, ST_GeomFromText(?, 4326))", 
-                        "POINT(#{longitude} #{latitude})")
+                        "POINT(#{latitude} #{longitude})")
                  .exists?
   rescue => e
     Rails.logger.warn "Error checking metro point containment: #{e.message}"

@@ -54,12 +54,12 @@ class Geoboundary < ActiveRecord::Base
   }
 
   scope :containing_point, ->(latitude, longitude) {
-    where("ST_Contains(boundary, ST_GeomFromText(?, 4326))", "POINT(#{longitude} #{latitude})")
+    where("ST_Contains(boundary, ST_GeomFromText(?, 4326))", "POINT(#{latitude} #{longitude})")
   }
 
   # Check if this boundary contains the given coordinates
   #
-  # Uses PostGIS ST_Contains function to perform precise geometric containment
+  # Uses MySQL ST_Contains function to perform precise geometric containment
   # testing against the boundary polygon.
   #
   # @param latitude [Float] Latitude in decimal degrees
@@ -72,7 +72,7 @@ class Geoboundary < ActiveRecord::Base
   def contains_point?(latitude, longitude)
     return false unless latitude && longitude && boundary
     
-    point_wkt = "POINT(#{longitude} #{latitude})"
+    point_wkt = "POINT(#{latitude} #{longitude})"
     
     self.class.connection.select_value(
       "SELECT ST_Contains(ST_GeomFromText(?), ST_GeomFromText(?, 4326)) AS contains",
