@@ -248,7 +248,27 @@ module HasGeoLookup
     
     # Fallback to closest geoname approach
     geoname_result = closest_county_or_parish
-    return geoname_result if geoname_result
+    if geoname_result && geoname_result.record
+      # Try coordinate bridge: use geoname coordinates to find GeoBoundaries match
+      # This improves language consistency (e.g., "Lisbon" → "Lisboa")
+      geoname_lat = geoname_result.record.latitude
+      geoname_lng = geoname_result.record.longitude
+      
+      if geoname_lat && geoname_lng
+        # Create temporary checker at geoname coordinates
+        temp_checker = Object.new.extend(HasGeoLookup)
+        temp_checker.define_singleton_method(:latitude) { geoname_lat }
+        temp_checker.define_singleton_method(:longitude) { geoname_lng }
+        
+        bridge_boundary = temp_checker.containing_boundary('ADM2')
+        if bridge_boundary
+          return GeoboundaryResult.new(bridge_boundary, geoname_result.distance_km, 'ADM2', bridge_boundary.name)
+        end
+      end
+      
+      # If coordinate bridge fails, use original geoname result
+      return geoname_result
+    end
     
     nil
   end
